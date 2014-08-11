@@ -6,6 +6,12 @@ int convert_to_base_5_scramble(const char *key, char *results);
 uint32_t base5_to_base2(int four, int five, uint32_t *accum_array, uint32_t *accum_array_, uint32_t char_base5);
 void decrypt(uint32_t *big_int);
 
+typedef struct {
+    uint16_t n_79_64;
+    uint32_t n_63_32;
+    uint32_t n_31_0;
+} cdkey_signature;
+
 int main(int argc, char **argv) {
     return 0;
 }
@@ -30,7 +36,7 @@ void validate_cdkey(const char *key, int *a2, int *a3, cdkey_signature *cdkeysig
     big_int[0] = 0;
     big_int[3] = 0;
     do
-      base5_to_base2(4, 5, big_int, big_int, *((_BYTE *)&big_int[3] + v4-- + 3));
+      base5_to_base2(4, 5, big_int, big_int, base5_52[v4--]);
     while ( v4 > 0 );
     decrypt(big_int);
     entropy_reducer(v5, (int *)big_int);
