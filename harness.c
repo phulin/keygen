@@ -1,10 +1,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
-void validate_cdkey(const char *key, int *a2, int *a3, cdkey_signature *cdkeysig);
-int convert_to_base_5_scramble(const char *key, char *results);
-uint32_t base5_to_base2(int four, int five, uint32_t *accum_array, uint32_t *accum_array_, uint32_t char_base5);
-void decrypt(uint32_t *big_int);
+#include "data.h" // scrambler, base25
+
+const char base25_to_asc[] = "246789BCDEFGHJKMNPRTVWXYZ";
 
 typedef struct {
     uint16_t n_79_64;
@@ -12,20 +11,45 @@ typedef struct {
     uint32_t n_31_0;
 } cdkey_signature;
 
-int main(int argc, char **argv) {
-    return 0;
+void validate_cdkey(const char *key, int32_t *a2, int *a3, cdkey_signature *cdkeysig);
+int32_t convert_to_base_5_scramble(const char *key, char *results);
+uint32_t base5_to_base2(int32_t four, int five, uint32_t *accum_array, uint32_t *accum_array_, uint32_t char_base5);
+void decrypt(uint32_t *big_int);
+uint32_t entropy_reducer(int32_t a1, uint32_t *big_int);
+
+int32_t main(int argc, char **argv) {
+    int32_t blah, blah2;
+    cdkey_signature cdkeysig;
+    char cdkey[27];
+    cdkey[26] = '\0';
+    
+    srand(time(NULL));
+    int count = 0, i, j;
+    for (i = 0; i < 10000000; i++) {
+        for (j = 0; j < 26; j++) {
+            cdkey[j] = base25_to_asc[rand() % 25];
+        }
+        validate_cdkey(cdkey, &blah, &blah2, &cdkeysig);
+        if (blah == 0x17) {
+            printf("found: %s\n", cdkey);
+            count++;
+        } else {
+            //printf("failure: %s: %u\n", cdkey, blah);
+        }
+    }
+    printf("count: %d\n", count);
 }
 
-void validate_cdkey(const char *key, int *a2, int *a3, cdkey_signature *cdkeysig)
+void validate_cdkey(const char *key, int32_t *a2, int *a3, cdkey_signature *cdkeysig)
 {
   int32_t v4; // esi@3
-  int v5; // ecx@5
+  int32_t v5; // ecx@5
   uint16_t n_15_0; // ax@5
   uint16_t n_31_16; // cx@5
-  int v8; // eax@5
-  int v9; // ecx@5
+  int32_t v8; // eax@5
+  int32_t v9; // ecx@5
   uint32_t big_int[4]; // [sp+0h] [bp-44h]@3
-  char base5_52[52]; // [sp+10h] [bp-34h]@3
+  uint8_t base5_52[52]; // [sp+10h] [bp-34h]@3
 
   if ( key && cdkeysig )
   {
@@ -36,13 +60,13 @@ void validate_cdkey(const char *key, int *a2, int *a3, cdkey_signature *cdkeysig
     big_int[0] = 0;
     big_int[3] = 0;
     do
-      base5_to_base2(4, 5, big_int, big_int, base5_52[v4--]);
+      base5_to_base2(4, 5, big_int, big_int, base5_52[v4-- - 1]);
     while ( v4 > 0 );
     decrypt(big_int);
-    entropy_reducer(v5, (int *)big_int);
-    n_15_0 = LOWORD(big_int[0]);
+    entropy_reducer(v5, (int32_t *)big_int);
+    n_15_0 = (uint16_t)(big_int[0]);
     *a2 = big_int[0] >> 10;
-    n_31_16 = LOWORD(big_int[1]);
+    n_31_16 = (uint16_t)(big_int[1]);
     *a3 = (big_int[1] >> 16) | ((n_15_0 & 0x3FF) << 16);
     v8 = big_int[2];
     cdkeysig->n_79_64 = n_31_16;
@@ -52,7 +76,7 @@ void validate_cdkey(const char *key, int *a2, int *a3, cdkey_signature *cdkeysig
   }
 }
 
-int convert_to_base_5_scramble(const char *key, char *results)
+int32_t convert_to_base_5_scramble(const char *key, char *results)
 {
   uint32_t resultidx2; // esi@1
   uint32_t idx; // edi@1
@@ -76,10 +100,10 @@ int convert_to_base_5_scramble(const char *key, char *results)
 }
 
 
-uint32_t base5_to_base2(int four, int five, uint32_t *accum_array, uint32_t *accum_array_, uint32_t char_base5)
+uint32_t base5_to_base2(int32_t four, int five, uint32_t *accum_array, uint32_t *accum_array_, uint32_t char_base5)
 {
-  int five_; // ebx@1
-  int three; // eax@1
+  int32_t five_; // ebx@1
+  int32_t three; // eax@1
   uint32_t char_base5_; // ebp@1
   uint32_t *ptr; // esi@1
   uint32_t *ptr_; // edi@1
@@ -92,7 +116,7 @@ uint32_t base5_to_base2(int four, int five, uint32_t *accum_array, uint32_t *acc
   ptr_ = &accum_array_[three];
   do
   {
-    *(_QWORD *)v10 = char_base5_ + (uint32_t)five_ * (unsigned __int64)*ptr;
+    *(uint64_t *)v10 = char_base5_ + (uint32_t)five_ * (uint64_t)*ptr;
     *ptr_ = v10[0];
     char_base5_ = v10[1];
     --ptr;
@@ -111,11 +135,11 @@ void decrypt(uint32_t *big_int)
   uint32_t big_int_idx; // ebx@2 MAPDST
   uint8_t nibble[4]; // eax@2
   uint32_t idx2; // ebp@2
-  int idx_1; // ebp@5
+  int32_t idx_1; // ebp@5
   uint32_t idx3_; // ecx@5
-  int v9; // esi@8
-  int v10; // ebx@8
-  int idx3; // [sp+10h] [bp-Ch]@5
+  int32_t v9; // esi@8
+  int32_t v10; // ebx@8
+  int32_t idx3; // [sp+10h] [bp-Ch]@5
 
   idx = 29;
   idx = 29;
@@ -124,7 +148,7 @@ void decrypt(uint32_t *big_int)
   {
     v3 = 4 * (idx & 7);
     big_int_idx = idx >> 3;
-    nibble[0] = ((15 << 4 * (idx & 7)) & big_int[3 - (idx >> 3)]) >> v3;
+    *(uint32_t *)nibble = ((15 << 4 * (idx & 7)) & big_int[3 - (idx >> 3)]) >> v3;
     v3 = 4 * (idx & 7);
     big_int_idx = idx >> 3;
     idx2 = 29;
@@ -162,7 +186,7 @@ void decrypt(uint32_t *big_int)
   while ( idx16 >= 0 );
 }
 
-uint32_t __fastcall entropy_reducer(int a1, int *big_int)
+uint32_t entropy_reducer(int32_t a1, uint32_t *big_int)
 {
   uint32_t bit1; // eax@1
   uint32_t old; // esi@1
@@ -189,54 +213,58 @@ uint32_t __fastcall entropy_reducer(int a1, int *big_int)
   char v24; // cl@12
   uint32_t v25; // ebx@12
   int32_t v26; // edi@12
-  int v27; // [sp+24h] [bp-4h]@1
 
-  v27 = big_int[3];
+  uint32_t old_120[4];
+  old_120[0] = big_int[0];
+  old_120[1] = big_int[1];
+  old_120[2] = big_int[2];
+  old_120[3] = big_int[3];
+
   bit1 = 0;
   old = 2;
   do
   {
     bit1idx = bit1 & 0x1F;
-    n_i = *(&v27 - (bit1 >> 5));
+    n_i = old_120[3 - (bit1 >> 5)];
     picker = 1 << (bit1 & 0x1F);
     v7 = bit1 + 11;
     big_int[3 - ((old - 2) >> 5)] = big_int[3 - ((old - 2) >> 5)] & ~(1 << ((old - 2) & 0x1F)) | ((((picker & n_i) >> bit1idx) & 1) << ((old - 2) & 0x1F));
-    if ( v7 >= 120 )                            // mod by 11
+    if ( v7 >= 120 ) // 47d57d
       v7 = v7 - 120 + (((v7 - 120) & 0x80000000u) != 0 ? 0xB : 0);
     bit2 = v7 & 0x1F;
-    v9 = *(&v27 - (v7 >> 5));
+    v9 = old_120[3 - (v7 >> 5)];
     v10 = 1 << (v7 & 0x1F);
     v11 = v7 + 11;
     big_int[3 - ((old - 1) >> 5)] = big_int[3 - ((old - 1) >> 5)] & ~(1 << ((old - 1) & 0x1F)) | ((((v10 & v9) >> bit2) & 1) << ((old - 1) & 0x1F));
-    if ( v11 >= 120 )
+    if ( v11 >= 120 ) // 47d5e7
       v11 = v11 - 120 + (((v11 - 120) & 0x80000000u) != 0 ? 0xB : 0);
     bit3 = v11 & 0x1F;
-    v13 = *(&v27 - (v11 >> 5));
+    v13 = old_120[3 - (v11 >> 5)];
     v14 = 1 << (v11 & 0x1F);
     v15 = v11 + 11;
     big_int[3 - (old >> 5)] = big_int[3 - (old >> 5)] & ~(1 << (old & 0x1F)) | ((((v14 & v13) >> bit3) & 1) << (old & 0x1F));
-    if ( v15 >= 120 )
+    if ( v15 >= 120 ) // 47d650
       v15 = v15 - 120 + (((v15 - 120) & 0x80000000u) != 0 ? 0xB : 0);
     bit4 = v15 & 0x1F;
-    v17 = *(&v27 - (v15 >> 5));
+    v17 = old_120[3 - (v15 >> 5)];
     v18 = 1 << (v15 & 0x1F);
     v19 = v15 + 11;
     big_int[3 - ((old + 1) >> 5)] = big_int[3 - ((old + 1) >> 5)] & ~(1 << ((old + 1) & 0x1F)) | ((((v18 & v17) >> bit4) & 1) << ((old + 1) & 0x1F));
-    if ( v19 >= 120 )
+    if ( v19 >= 120 ) // 47d6ba
       v19 = v19 - 120 + (((v19 - 120) & 0x80000000u) != 0 ? 0xB : 0);
     v20 = v19 & 0x1F;
-    v21 = *(&v27 - (v19 >> 5));
+    v21 = old_120[3 - (v19 >> 5)];
     v22 = 1 << (v19 & 0x1F);
     v23 = v19 + 11;
     big_int[3 - ((old + 2) >> 5)] = big_int[3 - ((old + 2) >> 5)] & ~(1 << ((old + 2) & 0x1F)) | ((((v22 & v21) >> v20) & 1) << ((old + 2) & 0x1F));
-    if ( v23 >= 120 )
+    if ( v23 >= 120 ) // 47d724
       v23 = v23 - 120 + (((v23 - 120) & 0x80000000u) != 0 ? 0xB : 0);
     v24 = v23 & 0x1F;
-    v25 = *(&v27 - (v23 >> 5));
+    v25 = old_120[3 - (v23 >> 5)];
     v26 = 1 << (v23 & 0x1F);
     bit1 = v23 + 11;
     big_int[3 - ((old + 3) >> 5)] = big_int[3 - ((old + 3) >> 5)] & ~(1 << ((old + 3) & 0x1F)) | ((((v26 & v25) >> v24) & 1) << ((old + 3) & 0x1F));
-    if ( bit1 >= 120 )
+    if ( bit1 >= 120 ) // 47d78e
       bit1 = bit1 - 120 + (((bit1 - 120) & 0x80000000u) != 0 ? 0xB : 0);
     old += 6;
   }
